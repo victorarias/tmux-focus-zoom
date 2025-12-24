@@ -34,4 +34,5 @@ tmux bind-key "$toggle_key" run-shell "$BINARY toggle"
 
 # Set up pane-focus-in hook
 # Use a unique hook name to avoid conflicts
-tmux set-hook -g pane-focus-in[100] "run-shell -b '$BINARY apply'"
+# Quote hook name to prevent glob expansion in shells like fish/zsh
+tmux set-hook -g 'pane-focus-in[100]' "run-shell -b '$BINARY apply'"
