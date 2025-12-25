@@ -7,11 +7,9 @@ import (
 )
 
 func TestStateRoundTrip(t *testing.T) {
-	// Use temp directory for test
+	// Use temp directory for test via env var
 	tmpDir := t.TempDir()
-	origHome := os.Getenv("HOME")
-	os.Setenv("HOME", tmpDir)
-	defer os.Setenv("HOME", origHome)
+	t.Setenv("FOCUS_ZOOM_CONFIG_DIR", tmpDir)
 
 	// Test saving state
 	state := &State{
@@ -27,7 +25,7 @@ func TestStateRoundTrip(t *testing.T) {
 	}
 
 	// Verify file exists
-	path := filepath.Join(tmpDir, configDir, stateFile)
+	path := filepath.Join(tmpDir, stateFile)
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		t.Fatal("State file was not created")
 	}
@@ -54,9 +52,7 @@ func TestStateRoundTrip(t *testing.T) {
 
 func TestLoadStateNoFile(t *testing.T) {
 	tmpDir := t.TempDir()
-	origHome := os.Getenv("HOME")
-	os.Setenv("HOME", tmpDir)
-	defer os.Setenv("HOME", origHome)
+	t.Setenv("FOCUS_ZOOM_CONFIG_DIR", tmpDir)
 
 	// Load should return empty state, not error
 	state, err := LoadState()
@@ -71,9 +67,7 @@ func TestLoadStateNoFile(t *testing.T) {
 
 func TestClearState(t *testing.T) {
 	tmpDir := t.TempDir()
-	origHome := os.Getenv("HOME")
-	os.Setenv("HOME", tmpDir)
-	defer os.Setenv("HOME", origHome)
+	t.Setenv("FOCUS_ZOOM_CONFIG_DIR", tmpDir)
 
 	// Create state
 	state := &State{Enabled: true, Session: "test", Window: "1", Snapshot: "layout"}
@@ -87,7 +81,7 @@ func TestClearState(t *testing.T) {
 	}
 
 	// Verify file is gone
-	path := filepath.Join(tmpDir, configDir, stateFile)
+	path := filepath.Join(tmpDir, stateFile)
 	if _, err := os.Stat(path); !os.IsNotExist(err) {
 		t.Error("State file should have been removed")
 	}

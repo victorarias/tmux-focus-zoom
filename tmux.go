@@ -1,14 +1,28 @@
 package main
 
 import (
+	"os"
 	"os/exec"
 	"strconv"
 	"strings"
 )
 
+// tmuxSocket returns the socket path if TMUX_SOCKET is set
+func tmuxSocket() string {
+	return os.Getenv("TMUX_SOCKET")
+}
+
+// tmuxArgs prepends socket args if TMUX_SOCKET is set
+func tmuxArgs(args ...string) []string {
+	if socket := tmuxSocket(); socket != "" {
+		return append([]string{"-S", socket}, args...)
+	}
+	return args
+}
+
 // TmuxCmd executes a tmux command and returns the output
 func TmuxCmd(args ...string) (string, error) {
-	cmd := exec.Command("tmux", args...)
+	cmd := exec.Command("tmux", tmuxArgs(args...)...)
 	out, err := cmd.Output()
 	if err != nil {
 		return "", err
@@ -18,7 +32,7 @@ func TmuxCmd(args ...string) (string, error) {
 
 // TmuxCmdNoOutput executes a tmux command without capturing output
 func TmuxCmdNoOutput(args ...string) error {
-	cmd := exec.Command("tmux", args...)
+	cmd := exec.Command("tmux", tmuxArgs(args...)...)
 	return cmd.Run()
 }
 

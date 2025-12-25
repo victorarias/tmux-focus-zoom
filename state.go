@@ -7,9 +7,21 @@ import (
 )
 
 const (
-	configDir = ".config/tmux-focus-zoom"
-	stateFile = "state.json"
+	defaultConfigDir = ".config/tmux-focus-zoom"
+	stateFile        = "state.json"
 )
+
+// configDir returns the config directory, respecting FOCUS_ZOOM_CONFIG_DIR env var
+func configDir() string {
+	if dir := os.Getenv("FOCUS_ZOOM_CONFIG_DIR"); dir != "" {
+		return dir
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return defaultConfigDir
+	}
+	return filepath.Join(home, defaultConfigDir)
+}
 
 // State represents the focus-zoom state for a session/window
 type State struct {
@@ -21,21 +33,12 @@ type State struct {
 
 // stateFilePath returns the full path to the state file
 func stateFilePath() (string, error) {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(home, configDir, stateFile), nil
+	return filepath.Join(configDir(), stateFile), nil
 }
 
 // ensureConfigDir creates the config directory if it doesn't exist
 func ensureConfigDir() error {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return err
-	}
-	dir := filepath.Join(home, configDir)
-	return os.MkdirAll(dir, 0755)
+	return os.MkdirAll(configDir(), 0755)
 }
 
 // LoadState reads the state from disk
