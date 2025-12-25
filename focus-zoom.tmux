@@ -32,7 +32,6 @@ toggle_key=$(get_tmux_option "@focus-zoom-key" "g")
 # Set up keybinding
 tmux bind-key "$toggle_key" run-shell "$BINARY toggle"
 
-# Set up pane-focus-in hook
-# Use a unique hook name to avoid conflicts
-# Quote hook name to prevent glob expansion in shells like fish/zsh
-tmux set-hook -g 'pane-focus-in[100]' "run-shell -b '$BINARY apply'"
+# Set up after-select-pane hook (more reliable than pane-focus-in)
+# Use index [100] to avoid conflicts with other plugins
+tmux set-hook -g 'after-select-pane[100]' "run-shell -b '$BINARY apply'"
