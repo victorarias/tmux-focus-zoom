@@ -379,6 +379,54 @@ func TestIntegration_ThreePanesZoom(t *testing.T) {
 	}
 }
 
+func TestIntegration_ToggleOffAfterPaneClose(t *testing.T) {
+	tt := newTmuxTest(t)
+	defer tt.close()
+
+	// Create three panes
+	if err := tt.splitHorizontal(); err != nil {
+		t.Fatalf("split 1 failed: %v", err)
+	}
+	if err := tt.splitHorizontal(); err != nil {
+		t.Fatalf("split 2 failed: %v", err)
+	}
+	if err := tt.evenHorizontal(); err != nil {
+		t.Fatalf("even layout failed: %v", err)
+	}
+
+	// Enable zoom
+	if err := tt.runPlugin("toggle"); err != nil {
+		t.Fatalf("toggle on failed: %v", err)
+	}
+	time.Sleep(100 * time.Millisecond)
+
+	t.Log("Zoom enabled with 3 panes")
+
+	// Close a pane
+	if err := tt.tmux("kill-pane", "-t", "%2"); err != nil {
+		t.Fatalf("kill-pane failed: %v", err)
+	}
+	time.Sleep(100 * time.Millisecond)
+
+	count, _ := tt.getPaneCount()
+	t.Logf("After close: %d panes", count)
+
+	// Toggle OFF - should not crash, should gracefully skip restore
+	if err := tt.runPlugin("toggle"); err != nil {
+		t.Fatalf("toggle off failed: %v", err)
+	}
+
+	// Verify we still have 2 panes with valid layout
+	widths, err := tt.getPaneWidths()
+	if err != nil {
+		t.Fatalf("getPaneWidths failed: %v", err)
+	}
+	if len(widths) != 2 {
+		t.Errorf("expected 2 panes, got %d", len(widths))
+	}
+	t.Logf("Final widths: %v", widths)
+}
+
 func abs(x int) int {
 	if x < 0 {
 		return -x

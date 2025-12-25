@@ -474,7 +474,9 @@ func RestoreSnapshot(state *State) error {
 	return SelectLayout(state.Snapshot)
 }
 
-// ApplyZoom restores snapshot and enlarges the focused pane proportionally
+// ApplyZoom reads the CURRENT layout and enlarges the focused pane proportionally.
+// This is a stateless approach - we calculate zoom from the current layout each time,
+// not from a saved snapshot. This prevents stale state issues when panes change.
 func ApplyZoom(state *State) error {
 	// Check pane count - skip if only 1 pane
 	paneCount, err := GetPaneCount()
@@ -485,7 +487,7 @@ func ApplyZoom(state *State) error {
 		return nil
 	}
 
-	// Check if we're in the same session/window as the snapshot
+	// Check if we're in the same session/window as when zoom was enabled
 	session, err := GetCurrentSession()
 	if err != nil {
 		return err
@@ -500,48 +502,26 @@ func ApplyZoom(state *State) error {
 		return nil
 	}
 
-	// Get active pane ID before restoring snapshot
+	// Get active pane ID
 	activePaneID, err := GetActivePaneID()
 	if err != nil {
 		return err
 	}
 	debugf("Active pane ID: %d", activePaneID)
 
-	// Parse the snapshot layout
-	layoutTree, err := ParseLayout(state.Snapshot)
+	// Read CURRENT layout (stateless approach - no snapshot dependency)
+	currentLayout, err := GetWindowLayout()
 	if err != nil {
-		debugf("Failed to parse layout: %v", err)
-		// Fall back to old approach
-		if err := RestoreSnapshot(state); err != nil {
-			_ = ClearState()
-			_ = DisplayMessage("Focus zoom: disabled (layout changed)")
-			return err
-		}
-		return applyZoomFallback(state, activePaneID)
+		debugf("Failed to get current layout: %v", err)
+		return err
 	}
+	debugf("Current layout: %s", currentLayout)
 
-	// Check if pane count has changed (pane was closed or opened)
-	snapshotPaneCount := countPanes(layoutTree)
-	if snapshotPaneCount != paneCount {
-		debugf("Pane count changed: snapshot=%d, current=%d - updating snapshot", snapshotPaneCount, paneCount)
-		// Capture fresh snapshot with current layout
-		newState, err := CaptureSnapshot()
-		if err != nil {
-			debugf("Failed to capture new snapshot: %v", err)
-			return err
-		}
-		// Save the updated state
-		if err := SaveState(newState); err != nil {
-			debugf("Failed to save updated state: %v", err)
-			return err
-		}
-		// Update our working state and re-parse
-		state.Snapshot = newState.Snapshot
-		layoutTree, err = ParseLayout(state.Snapshot)
-		if err != nil {
-			debugf("Failed to parse new layout: %v", err)
-			return err
-		}
+	// Parse the current layout
+	layoutTree, err := ParseLayout(currentLayout)
+	if err != nil {
+		debugf("Failed to parse current layout: %v", err)
+		return err
 	}
 
 	// Get configured zoom percentage
@@ -559,8 +539,6 @@ func ApplyZoom(state *State) error {
 
 	if err := SelectLayout(newLayout); err != nil {
 		debugf("Failed to apply layout: %v", err)
-		// Fall back to restoring snapshot
-		_ = RestoreSnapshot(state)
 		return err
 	}
 

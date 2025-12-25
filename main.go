@@ -69,12 +69,30 @@ func cmdToggle() error {
 	debugf("cmdToggle: state.Enabled=%v", state.Enabled)
 
 	if state.Enabled {
-		// Disable: restore snapshot and clear state
-		debugf("cmdToggle: disabling, restoring snapshot")
-		if err := RestoreSnapshot(state); err != nil {
-			debugf("cmdToggle: RestoreSnapshot error (ignored): %v", err)
-			// Ignore restore errors, just disable
+		// Disable: try to restore snapshot, then clear state
+		debugf("cmdToggle: disabling")
+
+		// Check if snapshot is still valid (same pane count)
+		canRestore := false
+		if state.Snapshot != "" {
+			if snapshotTree, err := ParseLayout(state.Snapshot); err == nil {
+				snapshotPanes := countPanes(snapshotTree)
+				currentPanes, _ := GetPaneCount()
+				canRestore = snapshotPanes == currentPanes
+				debugf("cmdToggle: snapshot panes=%d, current panes=%d, canRestore=%v",
+					snapshotPanes, currentPanes, canRestore)
+			}
 		}
+
+		if canRestore {
+			debugf("cmdToggle: restoring snapshot")
+			if err := RestoreSnapshot(state); err != nil {
+				debugf("cmdToggle: RestoreSnapshot error (ignored): %v", err)
+			}
+		} else {
+			debugf("cmdToggle: skipping restore (pane count changed)")
+		}
+
 		if err := ClearState(); err != nil {
 			debugf("cmdToggle: ClearState error: %v", err)
 			return fmt.Errorf("ClearState: %w", err)
