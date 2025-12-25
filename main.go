@@ -68,9 +68,16 @@ func cmdToggle() error {
 	}
 	debugf("cmdToggle: state.Enabled=%v", state.Enabled)
 
-	if state.Enabled {
-		// Disable: try to restore snapshot, then clear state
-		debugf("cmdToggle: disabling")
+	// Get current session/window to check if we're in the same window as state
+	currentSession, _ := GetCurrentSession()
+	currentWindow, _ := GetCurrentWindow()
+	sameWindow := state.Session == currentSession && state.Window == currentWindow
+	debugf("cmdToggle: state window=%s:%s, current=%s:%s, sameWindow=%v",
+		state.Session, state.Window, currentSession, currentWindow, sameWindow)
+
+	if state.Enabled && sameWindow {
+		// Disable: we're in the same window where zoom was enabled
+		debugf("cmdToggle: disabling (same window)")
 
 		// Check if snapshot is still valid (same pane count)
 		canRestore := false

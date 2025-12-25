@@ -379,6 +379,68 @@ func TestIntegration_ThreePanesZoom(t *testing.T) {
 	}
 }
 
+func TestIntegration_WindowSwitching(t *testing.T) {
+	tt := newTmuxTest(t)
+	defer tt.close()
+
+	// Create two panes in window 1
+	if err := tt.splitHorizontal(); err != nil {
+		t.Fatalf("split failed: %v", err)
+	}
+	if err := tt.evenHorizontal(); err != nil {
+		t.Fatalf("even layout failed: %v", err)
+	}
+
+	// Enable zoom in window 1
+	if err := tt.runPlugin("toggle"); err != nil {
+		t.Fatalf("toggle on failed: %v", err)
+	}
+	time.Sleep(100 * time.Millisecond)
+
+	widths1, _ := tt.getPaneWidths()
+	t.Logf("Window 1 zoomed widths: %v", widths1)
+
+	// Create window 2
+	if err := tt.tmux("new-window"); err != nil {
+		t.Fatalf("new-window failed: %v", err)
+	}
+	time.Sleep(100 * time.Millisecond)
+
+	// Toggle in window 2 should ENABLE (not disable window 1's zoom)
+	if err := tt.runPlugin("toggle"); err != nil {
+		t.Fatalf("toggle in window 2 failed: %v", err)
+	}
+	time.Sleep(100 * time.Millisecond)
+
+	// Go back to first window (windows are 1-indexed)
+	if err := tt.tmux("select-window", "-t", ":1"); err != nil {
+		t.Fatalf("select-window failed: %v", err)
+	}
+	time.Sleep(100 * time.Millisecond)
+
+	// Trigger apply
+	if err := tt.runPlugin("apply"); err != nil {
+		t.Fatalf("apply failed: %v", err)
+	}
+	time.Sleep(100 * time.Millisecond)
+
+	// Window 1 should still have zoom effect (state was overwritten but for window 2)
+	// Actually, since window 2 toggle overwrote state, window 1 won't auto-zoom
+	// But a single toggle should enable it again (not require two toggles)
+	if err := tt.runPlugin("toggle"); err != nil {
+		t.Fatalf("toggle in window 1 failed: %v", err)
+	}
+	time.Sleep(100 * time.Millisecond)
+
+	widths1After, _ := tt.getPaneWidths()
+	t.Logf("Window 1 widths after return and toggle: %v", widths1After)
+
+	// Should be zoomed (not equal widths)
+	if abs(widths1After[0]-widths1After[1]) < 20 {
+		t.Errorf("expected zoomed widths, got roughly equal: %v", widths1After)
+	}
+}
+
 func TestIntegration_ToggleOffAfterPaneClose(t *testing.T) {
 	tt := newTmuxTest(t)
 	defer tt.close()
