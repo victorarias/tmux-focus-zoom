@@ -189,6 +189,49 @@ func TestLayoutStringApproach(t *testing.T) {
 	t.Log("Challenge: need to parse and reconstruct the layout string format.")
 }
 
+// TestCountPanes tests counting panes in a layout tree
+func TestCountPanes(t *testing.T) {
+	tests := []struct {
+		name     string
+		layout   string
+		expected int
+	}{
+		{
+			name:     "single pane",
+			layout:   "1234,100x50,0,0,1",
+			expected: 1,
+		},
+		{
+			name:     "two panes horizontal",
+			layout:   "1234,199x53,0,0{99x53,0,0,1,99x53,100,0,2}",
+			expected: 2,
+		},
+		{
+			name:     "two panes vertical",
+			layout:   "1234,100x100,0,0[100x49,0,0,1,100x49,0,50,2]",
+			expected: 2,
+		},
+		{
+			name:     "four panes complex",
+			layout:   "b2d9,255x61,0,0{84x61,0,0[84x30,0,0,26,84x30,0,31,41],85x61,85,0,36,84x61,171,0,42}",
+			expected: 4,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			node, err := ParseLayout(tc.layout)
+			if err != nil {
+				t.Fatalf("ParseLayout error: %v", err)
+			}
+			count := countPanes(node)
+			if count != tc.expected {
+				t.Errorf("countPanes() = %d, expected %d", count, tc.expected)
+			}
+		})
+	}
+}
+
 // TestTwoColumnLayout tests the specific case that's broken:
 // Two panes side by side (one vertical split creating two columns)
 func TestTwoColumnLayout(t *testing.T) {

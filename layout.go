@@ -268,6 +268,22 @@ func containsPane(node *LayoutNode, paneID int) bool {
 	return false
 }
 
+// countPanes returns the number of panes in a layout tree
+func countPanes(node *LayoutNode) int {
+	if node == nil {
+		return 0
+	}
+	if node.SplitType == SplitNone {
+		// Leaf node = 1 pane
+		return 1
+	}
+	count := 0
+	for _, child := range node.Children {
+		count += countPanes(child)
+	}
+	return count
+}
+
 // copyLayoutNode creates a deep copy of a layout node
 func copyLayoutNode(node *LayoutNode) *LayoutNode {
 	if node == nil {
@@ -502,6 +518,30 @@ func ApplyZoom(state *State) error {
 			return err
 		}
 		return applyZoomFallback(state, activePaneID)
+	}
+
+	// Check if pane count has changed (pane was closed or opened)
+	snapshotPaneCount := countPanes(layoutTree)
+	if snapshotPaneCount != paneCount {
+		debugf("Pane count changed: snapshot=%d, current=%d - updating snapshot", snapshotPaneCount, paneCount)
+		// Capture fresh snapshot with current layout
+		newState, err := CaptureSnapshot()
+		if err != nil {
+			debugf("Failed to capture new snapshot: %v", err)
+			return err
+		}
+		// Save the updated state
+		if err := SaveState(newState); err != nil {
+			debugf("Failed to save updated state: %v", err)
+			return err
+		}
+		// Update our working state and re-parse
+		state.Snapshot = newState.Snapshot
+		layoutTree, err = ParseLayout(state.Snapshot)
+		if err != nil {
+			debugf("Failed to parse new layout: %v", err)
+			return err
+		}
 	}
 
 	// Get configured zoom percentage
