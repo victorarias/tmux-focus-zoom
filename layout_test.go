@@ -1,6 +1,7 @@
 package main
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -186,4 +187,55 @@ func TestLayoutStringApproach(t *testing.T) {
 	t.Log("This would give us perfect proportional distribution in one operation.")
 	t.Log("")
 	t.Log("Challenge: need to parse and reconstruct the layout string format.")
+}
+
+// TestTwoColumnLayout tests the specific case that's broken:
+// Two panes side by side (one vertical split creating two columns)
+func TestTwoColumnLayout(t *testing.T) {
+	// Layout: 2 panes side by side (horizontal split)
+	// {pane1, pane2} - using {} means horizontal split
+	layout := "1234,199x53,0,0{99x53,0,0,1,99x53,100,0,2}"
+	
+	t.Logf("Input layout: %s", layout)
+	
+	node, err := ParseLayout(layout)
+	if err != nil {
+		t.Fatalf("Parse error: %v", err)
+	}
+	
+	t.Logf("Root: %dx%d, SplitType=%d (1=Horiz, 2=Vert)", 
+		node.Width, node.Height, node.SplitType)
+	
+	if node.SplitType != SplitHorizontal {
+		t.Errorf("Root should be SplitHorizontal (1), got %d", node.SplitType)
+	}
+	
+	for i, c := range node.Children {
+		t.Logf("  Child %d: %dx%d at (%d,%d), PaneID=%d, SplitType=%d",
+			i, c.Width, c.Height, c.X, c.Y, c.PaneID, c.SplitType)
+	}
+	
+	// Apply zoom to pane 1
+	zoomed := ApplyZoomToLayout(node, 1, 65)
+	
+	t.Logf("After zoom:")
+	t.Logf("Root: %dx%d, SplitType=%d", zoomed.Width, zoomed.Height, zoomed.SplitType)
+	
+	if zoomed.SplitType != SplitHorizontal {
+		t.Errorf("Root should STILL be SplitHorizontal (1) after zoom, got %d", zoomed.SplitType)
+	}
+	
+	for i, c := range zoomed.Children {
+		t.Logf("  Child %d: %dx%d at (%d,%d), PaneID=%d, SplitType=%d",
+			i, c.Width, c.Height, c.X, c.Y, c.PaneID, c.SplitType)
+	}
+	
+	rebuilt := BuildLayout(zoomed)
+	t.Logf("Rebuilt: %s", rebuilt)
+	
+	// The rebuilt layout should use {} not []
+	if strings.Contains(rebuilt, "[") {
+		t.Errorf("BUG: Layout changed from {} to [] (horizontal to vertical)!")
+		t.Errorf("Expected horizontal split {}, got vertical split []")
+	}
 }
